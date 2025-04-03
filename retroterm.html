@@ -1,0 +1,651 @@
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <title>Labienus.dev</title>
+  <link rel="stylesheet" href="base.css">
+</head>
+
+<div class="dash-low-header" style="display:flex">
+  <label class="menu" for="menu"><img src="menu.svg"></label>
+  <input type="checkbox" id="menu"></input>
+  <div class="menu-options">
+    <div class="menu-header">Menu</div>
+    <a href="/home" class="link">Main page</a>
+  </div>
+  <a class="dashtext" href="/index.html">Labienus.dev</a>
+</div>
+
+<div class="info">
+
+  <h1 class="entry-title">Retro terminal with HTML5 canvas</h1>
+
+  <p>Canvas layering, Javascript animations to emulate an old CRT screen with exaggerated effects.</p>
+
+  <p>
+    <a class="link">Javascript, </a>
+    <a class="link">HTML, </a>
+    <a class="link">CSS </a>
+  </p>
+
+  <p>
+    8-11-2023 <span class="dotbreak"></span> <i class="sls">modified 8-16-2023</i>
+  </p>
+
+</div>
+
+<div class="article-container">
+
+  <div class="content">
+    <h4>
+      Contents
+    </h4>
+
+    <ol>
+      <li>
+        <a class="link" href="#what">What makes a terminal "retro"?</a>
+      </li>
+      <li>
+        <a class="link" href="#basic">Basic Typing</a>
+      </li>
+      <li>
+        <a class="link" href="#persist">Phosphor persistence</a>
+      </li>
+      <li>
+        <a class="link" href="#glowy">Glow</a>
+      </li>
+      <li>
+        <a class="link" href="#flicker">Flickering</a>
+      </li>
+      <li>
+        <a class="link" href="#rastar">Rastar</a>
+      </li>
+      <li>
+        <a class="link" href="#sweep">Sweeping Beam</a>
+      </li>
+    </ol>
+  </div>
+
+  <div class="article">
+    <section id="what">
+      <h3>What makes a terminal "retro"?</h3>
+    </section>
+
+    <p>
+      My primary inspiration is <a href="https://github.com/Swordfish90/cool-retro-term" class="link">cool-retro-term</a> by
+      Swordfish90, introduced
+      to me by <a href="https://news.ycombinator.com/item?id=36798774" class="link"> this Hacker News post.</a>
+      My goal is to replicate the phosphor persistence, the faint glow, the noise and flicker, rastars, as well as the
+      sweeping horizontal line. I've never used a CRT screen,
+      but it seems that these features are heavy exaggerations of the real thing. The sweeping line itself only <a
+        class="link"
+        href="https://www.ucl.ac.uk/slade/know/3751#:~:text=Unless%20your%20camera's%20frame%20rate,phosphors%20but%20others%20aren't.">
+        shows up in video recordings.</a>
+    </p>
+
+    <p>
+      Here is the project <a class="link" href="https://codepen.io/labienus/pen/QWJXVKQ">codepen.</a>
+    </p>
+
+    <section id="basic">
+      <h3>Basic typing</h3>
+    </section>
+
+    <p>
+      To create a basic console, I initially referenced <a class="link"
+        href="https://www.codeproject.com/Articles/1066735/Command-Console-in-your-browser-via-HTML-Canvas-J">this
+        article</a> by raddevus.
+      Our first goal is to simply type and delete. We can set up a canvas like so:
+    </p>
+
+    <pre>
+      <code>
+  &lt;link rel=&quot;stylesheet&quot; href=&quot;style.css&quot;&gt;
+  &lt;div class=&quot;stage&quot;&gt;
+    &lt;canvas id=&quot;console&quot;&gt;&lt;/canvas&gt;
+  &lt;/div&gt;
+  &lt;script src=&quot;console.js&quot;&gt;&lt;/script&gt;
+      </code>
+    </pre>
+
+    <p>
+      set our console background in css:
+    </p>
+
+    <pre>
+      <code>
+  .stage {
+    background-color: black;
+  }
+
+  #console {
+
+  }
+      </code>
+    </pre>
+
+    <p>
+      And create some basic javascript logic in console.js:
+    </p>
+
+    <pre>
+      <code>
+  var c = document.getElementById("console")
+  var ctx = c.getContext("2d")
+
+  var charWidth = 13
+  var charHeight = charWidth * 2
+  c.width = charWidth * 80
+
+  var x = 0
+  var y = charHeight
+
+  var color = "#FFB000"
+  var font = "16pt monospace"
+
+  ctx.font = font
+  ctx.fillStyle = color
+
+  var cmd = ''
+
+  window.addEventListener("load", main)
+  function main() {
+      window.addEventListener("keydown", type)
+  }
+
+  function type(e) {
+      if ((e.key === 'Backspace')) {
+          cmd = cmd.slice(0, -1)
+          ctx.clearRect(0, 0, c.width, c.height) //clears screen
+          x = 0
+          for (let i = 0; i < cmd.length; i++) { //reprint by character,
+              ctx.fillText(cmd[i], x, y)         //otherwise monospace misalignment
+              x += charWidth
+          }
+      }
+
+      else if (e.key != "Shift" && e.key != "Control") {
+          ctx.fillText(e.key, x, y)
+          x += charWidth
+          cmd+=e.key
+      }
+  }
+      </code>
+    </pre>
+
+    <p>
+      Browsers have standards for interacting with canvas, known as "contexts".
+      <a class="link" href="https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D">"2d" context</a>
+      massively abstracts text rendering for us. We give it a font and fillStyle (color/gradient/pattern), and then we
+      can invoke fillText().
+    </p>
+
+
+    <video autoplay loop muted>
+      <source src="retroterm/basic.mp4" type="video/mp4">
+    </video>
+
+
+    <section id="persist">
+      <h3>Phosphor persistence</h3>
+    </section>
+
+    <p>
+      Our HTML can handle multiple canvas atop eachother, so we add a new "persistence"
+      canvas atop our console,
+    </p>
+
+    <pre>
+      <code>
+
+  &lt;link rel=&quot;stylesheet&quot; href=&quot;style.css&quot;&gt;
+  &lt;div class=&quot;stage&quot;&gt;
+    &lt;canvas id=&quot;persistence&quot;&gt;&lt;/canvas&gt;         <-- here
+    &lt;canvas id=&quot;console&quot;&gt;&lt;/canvas&gt;
+  &lt;/div&gt;
+  &lt;script src=&quot;console.js&quot;&gt;&lt;/script&gt;
+
+      </code>
+    </pre>
+
+    <p>
+      And make sure it is layered ontop using css:
+    </p>
+
+    <pre>
+      <code>
+  #persistence {
+    position: absolute;
+    z-index: 1;
+  }
+      </code>
+    </pre>
+
+    <p>
+      And create an animation frame function for it:
+    </p>
+
+    <pre>
+      <code>
+  var p = document.getElementById("persistence")
+  var pctx = p.getContext("2d")
+
+  p.width = c.width
+  p.height = c.height
+
+  pctx.fillStyle = color
+  pctx.font = font
+
+  da = 0.03 //rate at which alpha (opacity) changes
+
+  var persisting = []
+  function persistence() {
+    pctx.clearRect(0, 0, p.width, p.height)
+    for (let i = 0; i < persisting.length; i++) {
+      let persistor = persisting[i]
+      pctx.globalAlpha = persistor.alpha
+      if (persistor.alpha > 0) {
+          persistor.alpha -= da
+          if (persistor.type == 'text') {
+              pctx.fillText(persistor.c, persistor.x, persistor.y)
+          }
+      }
+    }
+    persisting = persisting.filter(persistor => persistor.alpha > 0);
+    requestAnimationFrame(persistence)
+  }
+      </code>
+    </pre>
+
+    <p>
+      We are keeping track of persisting objects in a list, which we continously
+      iterate through to redraw at a lower "globalAlpha," or opacity. We also
+      need to keep filtering our array to kick out objects at 0 opacity.
+      Otherwise you will get some performance issues.
+      Thus we can easily push persisting text in our "backspace" scenario:
+    </p>
+
+    <pre>
+      <code>
+  persisting.push({type: "text", c: cmd.slice(-1), x-=charWidth, y, alpha: 1})
+      </code>
+    </pre>
+
+    <p>
+      We then call on our animation function in the main function. As we are calling
+      requestAnimationFrame() within our persistence method, the browser will handle the recursion for us.
+    </p>
+
+    <pre>
+      <code>
+  window.addEventListener("load", main)
+  function main() {
+    window.addEventListener("keydown", type)
+    persistence()
+  }
+      </code>
+    </pre>
+
+    <video autoplay loop muted>
+      <source src="retroterm/persist.mp4" type="video/mp4">
+    </video>
+
+    <section id="glowy">
+      <h3>Glow</h3>
+    </section>
+    <p>
+      We can emulate a "glow" very easily using the shadow methods from 2d context.
+      Once again, we add a new HTML canvas atop our console and persistence.
+    </p>
+    <pre>
+      <code>
+
+  &lt;link rel=&quot;stylesheet&quot; href=&quot;style.css&quot;&gt;
+  &lt;div class=&quot;stage&quot;&gt;
+    &lt;canvas id=&quot;glow&quot;&gt;&lt;/canvas&gt;
+    &lt;canvas id=&quot;persistence&quot;&gt;&lt;/canvas&gt;         
+    &lt;canvas id=&quot;console&quot;&gt;&lt;/canvas&gt;
+  &lt;/div&gt;
+  &lt;script src=&quot;console.js&quot;&gt;&lt;/script&gt;
+
+  #glow {
+    position: absolute;
+    z-index: 2;
+  }
+      </code>
+    </pre>
+
+    <p>
+      We make our glow effect an animation:
+    </p>
+
+    <pre>
+      <code>
+  var g = document.getElementById("glow")
+  var gctx = g.getContext("2d")
+
+  g.width = c.width
+  g.height = c.height
+
+  gctx.fillStyle = color
+  gctx.font = font
+
+  glowIntensity = 15
+
+  function glow() {
+    gctx.clearRect(0, 0, g.width, g.height)
+    gctx.shadowBlur = glowIntensity
+    gctx.shadowColor = color
+    gctx.drawImage(c, 0, 0)
+    gctx.drawImage(p, 0, 0)
+    gctx.globalCompositeOperation = 'destination-out'
+    gctx.shadowBlur = 0
+    gctx.drawImage(c, 0, 0)
+    gctx.drawImage(p, 0, 0)
+    gctx.globalCompositeOperation = 'source-over'
+    requestAnimationFrame(glow)
+  }
+      </code>
+    </pre>
+
+    <p>
+      This one is a bit tricky. We have our basic shadowBlur and shadowColor
+      properties fulfilled, and then we can draw our text canvas and persistence canvas onto our new canvas,
+      now with a glow. However, this will stack atop them, creating some bleeding and unintentionally
+      increasing the opacity. We can avoid this by using some special <a class="link"
+        href="https://web.archive.org/web/20230715083046/https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/globalCompositeOperation">
+        globalCompositeOperations</a> (The current MDN docs seem to omit the operations/visualizations). After we draw
+      our glow, we temporarily
+      disable the shadows and use "destination-out", allowing us to "erase" within the area we draw into. The result
+      is that our glow canvas purely shows our shadow effects.
+    </p>
+
+    <video autoplay loop muted>
+      <source src="retroterm/glow.mp4" type="video/mp4">
+    </video>
+
+    <section id="flicker">
+      <h3>Flickering</h3>
+    </section>
+
+    <p>
+      From the cool-retro-term examples, there is a light "simmer" of the pixels,
+      possibly emulating how the electron beams were not 100% accurate. The
+      result is that the characters jostle, making the screen feel more alive and in-motion.
+      We can replicate this lightly with some CSS animations.
+    </p>
+
+    <p>
+      <a href="https://codepen.io/lbebber/pen/XJRdrV/" class="link">Lucas Bebber </a> created a method of
+      CSS flickering, explained excellently by <a class="link"
+        href="http://aleclownes.com/2017/02/01/crt-display.html">Alec Lownes</a> (along with the rastar).
+      We can also add some brief horizontal translations, a "shim" of the contents, to simulate the same
+      shadow motions by Alec.
+    </p>
+
+    <pre>
+      <code>
+  @keyframes flicker {
+    0% {
+        opacity: 0.97861;
+    }
+
+    5% {
+        opacity: 0.93559;
+        ;
+    }
+
+    10% {
+        opacity: 0.93559;
+    }
+
+    15% {
+        opacity: 0.96559;
+    }
+
+    20% {
+        opacity: 0.88128;
+    }
+
+    25% {
+        opacity: 1;
+    }
+
+    30% {
+        opacity: 0.965583;
+    }
+
+    35% {
+        opacity: 0.97807;
+    }
+
+    40% {
+        opacity: 0.96559;
+    }
+
+    45% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.96019;
+    }
+
+    55% {
+        opacity: 0.98594;
+    }
+
+    60% {
+        opacity: 1;
+    }
+
+    65% {
+        opacity: 1;
+    }
+
+    70% {
+        opacity: 1;
+    }
+
+    75% {
+        opacity: 0.97288;
+    }
+
+    80% {
+        opacity: 1;
+    }
+
+    85% {
+        opacity: 1;
+    }
+
+    90% {
+        opacity: 1;
+    }
+
+    95% {
+        opacity: 0.96108;
+    }
+
+    100% {
+        opacity: 0.96;
+    }
+  }
+
+  @keyframes shim {
+
+      80%, 30% {
+          transform: translate(0.1px);
+      }
+  }
+
+  &lt;div class=&quot;flicker&quot;&gt;
+    &lt;canvas id=&quot;console&quot;&gt;&lt;/canvas&gt;
+  &lt;/div&gt;
+
+  .flicker {
+    animation: shim 0.2s infinite, flicker 0.15s infinite;
+  }
+
+      </code>
+    </pre>
+
+    <p>
+      Now, get this: with yet another canvas <img src="emots/emot-dance.gif"> we can add simulate some
+      of those stray electron beams. We stack an id "noise" canvas, and add this script:
+    </p>
+
+    <pre>
+      <code>
+  var n = document.getElementById("noise")
+  var nctx = n.getContext('2d')
+  n.width = c.width
+  n.height = c.height
+  var shift = 1
+  var missedRowChance = 0.001
+  var missedColumnChance = 0.01
+  
+  function noise() {
+    const imageData = ctx.getImageData(0, 0, n.width, n.height)
+    const textPixels = new Uint32Array(imageData.data.buffer)
+    const noisePixels = new Uint32Array(textPixels.length)
+    for (let y = 0; y < n.height; y++) {
+      if (Math.random() < missedRowChance) {
+        const sourceIndex = y * n.width
+        Math.random() < 0.5 ? noisePixels.set(textPixels.subarray(sourceIndex, sourceIndex + n.width), sourceIndex) : noisePixels.fill(0x12121200, sourceIndex, sourceIndex+n.width)
+      }
+  
+      for (let x = 0; x < n.width; x++) {
+        if (Math.random() < missedColumnChance) {
+          const sourceIndex = y * n.width + x
+          const targetIndex = Math.random() < 0.5 ? y * n.width + (x + shift) : y * n.width + (x - shift)
+          noisePixels[targetIndex] = textPixels[sourceIndex]
+        }
+      }
+    }
+    imageData.data.set(new Uint8ClampedArray(noisePixels.buffer));
+    nctx.putImageData(imageData, 0, 0);
+  }
+      </code>
+    </pre>
+
+    <p>
+      I used the idea of int32 manipulation from <a href="https://codepen.io/fawority/pen/aVqWey" class="link">
+        this codepen</a> by fawority, who demonstrated how fast it can be for noise generation.
+      Unfortunately, we are also butchering that performance gain with getImageData() on our text canvas, which
+      will actively pull along the CPU/GPU bus.
+    </p>
+
+    <p>
+      We are creating 2 int32 arrays to represent our text and our noise canvas, specifically to allow for pixel
+      manipulation. Their values are represented linearly. We can calculate desired indexes with the general
+      formula <strong>index = y * width + x.</strong> We first ascend each "row" of our text
+      canvas, and to simulate electron beam inaccuracy, occasionally we redraw the current
+      row, or fill it as the background, which I think creates a cool effect. We then iterate through each column, and randomly assign a text pixel to either leak
+      to the left or to the right as noise. Finally, we convert our noise pixels back into the 8int RGBA format,
+      and put it into our noise canvas each frame.
+    </p>
+
+    <p>
+      At this point, we might as well put our animations under the same frame animation handler as well,
+      it saved me ~2MB of GPU memory:
+    </p>
+
+    <pre>
+      <code>
+  function animate() {
+    persistence()
+    glow()
+    noise()
+    requestAnimationFrame(animate)
+  }
+      </code>
+    </pre>
+
+    <video autoplay loop muted>
+      <source src="retroterm/beam leak.mp4" type="video/mp4">
+    </video>
+
+    <section id="rastar">
+      <h3>Rastar</h3>
+    </section>
+
+    <p>
+      I mentioned before <a href="https://codepen.io/lbebber/pen/XJRdrV/" class="link">Lucas Bebber's </a> most
+      excellent pixel grid background, so we can place it under our glow:
+    </p>
+
+    <pre>
+      <code>
+  #glow {
+    z-index: 2;
+    position: absolute;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(12, 12, 12, 0.25) 50%), linear-gradient(90deg, rgba(12, 12, 12, 0.06), rgba(12, 12, 12, 0.02), rgba(12, 12, 12, 0.06));
+    background-size: 100% 2px, 3px 100%;
+  }
+      </code>
+    </pre>
+
+    <p>
+      Please refer to <a class="link" href="http://aleclownes.com/2017/02/01/crt-display.html">Alec Lownes' </a>
+      explanation
+      of the CSS magic.
+    </p>
+
+    <section id="sweep">
+      <h3>Sweeping beam</h3>
+    </section>
+
+    <p>
+      We already have the means to sweep through our canvas through the persistence canvas. We can create
+      a new type to persist, a rectangle:
+    </p>
+
+    <pre>
+      <code>
+  if (persistor.type == 'rect') {
+    pctx.fillRect(persistor.x, persistor.y, persistor.w, persistor.h)
+  }
+      </code>
+    </pre>
+
+    <p>
+      And create a new animation for our animate() function:
+    </p>
+
+    <pre>
+      <code>
+  var scanlineY = 0
+  function sweep() {
+    if (scanlineY <= c.height) persisting.push({ type: 'rect', x: 0, y: scanlineY, w: c.width, h: 1, alpha: 0.2 })
+    scanlineY += 3
+    if (scanlineY >= c.width + 200) scanlineY = 0
+  }
+      </code>
+    </pre>
+
+    <video autoplay loop muted>
+      <source src="retroterm/rastarsweep.mp4" type="video/mp4">
+    </video>
+
+    <p>
+      Finally, I recommend passing this through a Javascript compiler. The Google-Clojure compiler
+      shaved off ~1MB of GPU memory for me. Shadow rendering and blur is always super expensive unfortunately, 
+      so if you find a better solution please share!
+    </p>
+
+    <p> 
+      If you want a retro font to use as well, I recommend <a href="http://webdraft.hu/fonts/classic-console/" class="link"> this excellent classic
+        font </a> by deejayy (Chief Twat).
+    </p>
+
+    <p>
+      You can find the script I use for my terminal at <a href="labienus.dev/console.js" class="link">labienus.dev/console.js</a>
+    </p>
+
+  </div>
+
+</div>
+
+<div class="dash-high-header">
+  No socials
+</div>
